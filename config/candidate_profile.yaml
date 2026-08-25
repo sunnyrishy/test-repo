@@ -1,0 +1,103 @@
+# Candidate profile. Never hard-code these values in business logic.
+# Edited here for bootstrap; the live copy is stored in the candidate_profile table
+# and can be updated through PUT /api/profile.
+graduation_year: 2026
+
+degree:
+  level: "Master's"
+  field: Computer Science
+  # Degree levels that satisfy a job's education requirement.
+  accepted_levels:
+    - Bachelor's
+    - Master's
+
+country: US
+
+employment_types:
+  - FullTime
+
+experience:
+  maximum_preferred_years: 1
+
+career_stage:
+  - Entry Level
+  - New Grad
+  - Junior
+  - Associate
+  - Early Career
+
+preferred_roles:
+  - Software Engineer
+  - Software Developer
+  - Software Development Engineer
+  - Associate Software Engineer
+  - Junior Software Engineer
+  - Entry Level Software Engineer
+  - New Grad Software Engineer
+  - Early Career Software Engineer
+  - Backend Engineer
+  - Backend Software Engineer
+  - Full Stack Engineer
+  - Full Stack Developer
+
+related_roles:
+  - Systems Software Engineer
+  - Application Engineer
+  - Platform Engineer
+  - Infrastructure Engineer
+  - Cloud Engineer
+  - Data Engineer
+  - Machine Learning Engineer
+  - AI Engineer
+  - Applied AI Engineer
+  - Software Engineer AI
+  - DevOps Engineer
+  - QA Automation Engineer
+  - Test Automation Engineer
+  - Automation Engineer
+  - Developer Tools Engineer
+  - Build Engineer
+
+excluded_roles:
+  - Product Manager
+  - Project Manager
+  - Program Manager
+  - Business Analyst
+  - Sales Engineer
+  - Solutions Architect
+  - Account Executive
+  - Recruiter
+  - Technical Writer
+
+excluded_seniority_terms:
+  - Senior
+  - Sr.
+  - Staff
+  - Principal
+  - Lead
+  - Manager
+  - Director
+  - VP
+  - Vice President
+  - Architect
+  - Head of
+
+skills:
+  - C++
+  - Java
+  - Python
+  - SQL
+  - Data Structures
+  - Algorithms
+  - Object Oriented Programming
+  - System Design
+  - Git
+  - Linux
+  - Machine Learning
+  - Deep Learning
+  - NLP
+  - OpenCV
+  - TensorFlow
+  - PyTorch
+  - Scikit-learn
+  - Selenium

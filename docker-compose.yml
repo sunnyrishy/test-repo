@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_agent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./config:/config:ro
+    environment:
+      CANDIDATE_PROFILE_PATH: /config/candidate_profile.yaml
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - ./config:/config:ro
+    environment:
+      CANDIDATE_PROFILE_PATH: /config/candidate_profile.yaml
+    command: python -m app.workers.discovery_worker
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
