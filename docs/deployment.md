@@ -25,7 +25,42 @@ Supabase all work. **Use the pooled connection string.** Serverless
 invocations are short-lived and would otherwise exhaust the server's
 connections; the engine disables its own pool when `VERCEL` is set.
 
-## 1. Database
+## Without the CLI
+
+Everything below can be done from the Vercel dashboard instead; only the
+database migration needs somewhere to run SQL, and your database provider's
+web console is enough.
+
+**1. Database.** Create a Postgres database (Neon, Supabase or Vercel
+Postgres). Open its SQL editor, paste the contents of [`schema.sql`](schema.sql)
+and run it once. That creates every table and stamps `alembic_version` at
+`0002`, so later migrations still work normally from a terminal. You do not
+need to seed the candidate profile: the API loads
+`config/candidate_profile.yaml` into the database the first time it reads it.
+
+**2. API project.** In the Vercel dashboard: **Add New → Project → Import**
+this repository. Leave **Root Directory** as the repository root. Vercel finds
+`vercel.json` and `requirements.txt` and builds the Python function. Before the
+first deploy, open **Environment Variables** and add `DATABASE_URL` (the
+*pooled* connection string, with `sslmode=require`), `API_KEY`, `CRON_SECRET`
+(same value as `API_KEY`), `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, and your
+`GREENHOUSE_BOARDS` / `LEVER_BOARDS`. Deploy.
+
+**3. Frontend project.** **Add New → Project → Import** the same repository
+again, and this time set **Root Directory** to `frontend`. Vercel detects Vite.
+Add `VITE_API_BASE_URL` pointing at the API project's URL, and deploy.
+
+**4. Connect them.** Back on the API project, set `CORS_ORIGINS` to the
+frontend's URL and redeploy it (**Deployments → ⋯ → Redeploy**).
+
+**5. Open the dashboard**, click **Admin key**, paste the `API_KEY` value, then
+**Run pipeline**. The cron in `vercel.json` is registered automatically — check
+it under **Settings → Cron Jobs**.
+
+Generating values without a terminal: any password manager will produce a
+suitable random `API_KEY`; it just has to be long and unguessable.
+
+## 1. Database (CLI)
 
 Create the database, then run the migrations from your machine (they are
 excluded from the function bundle):
@@ -38,7 +73,7 @@ alembic upgrade head
 python ../scripts/seed_profile.py
 ```
 
-## 2. API project
+## 2. API project (CLI)
 
 ```bash
 npm i -g vercel
@@ -66,7 +101,7 @@ Optional: `MAX_JOB_AGE_HOURS`, `MIN_MATCH_SCORE`, `NOTIFICATION_MIN_SCORE`,
 `VERIFICATION_BATCH_SIZE`, and the SMTP/Telegram/Discord variables from
 `.env.example`.
 
-## 3. Frontend project
+## 3. Frontend project (CLI)
 
 ```bash
 cd frontend

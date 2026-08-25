@@ -76,8 +76,9 @@ LEVER_BOARDS=plaid
 ## Hosting
 
 `docs/deployment.md` covers deploying to Vercel as two projects (API +
-dashboard) with a managed Postgres and a cron-driven pipeline, and says what
-changes there: no always-on worker, bounded verification batches, and a
+dashboard) with a managed Postgres and a cron-driven pipeline — from the
+dashboard or the CLI, with `docs/schema.sql` for setting up the database
+without a terminal — and says what changes there: no always-on worker, bounded verification batches, and a
 required `API_KEY` on the admin routes. A single always-on host running
 `docker-compose.yml` is the simpler alternative.
 
