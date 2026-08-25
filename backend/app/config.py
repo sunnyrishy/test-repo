@@ -12,6 +12,12 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/job_agent"
 
+    # Shared secret for admin routes. Empty means "no auth", which is fine for
+    # a local stack and is NOT fine for a hosted one - see app/security.py.
+    api_key: str = ""
+    # Origins allowed to call the API from a browser.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
     # AI verification. "mock" is for development and tests only; it never
     # fabricates a decision in production because it is not the default.
     ai_provider: str = "mock"
@@ -50,6 +56,10 @@ class Settings(BaseSettings):
 
     candidate_profile_path: Path = REPO_ROOT / "config" / "candidate_profile.yaml"
     prompts_path: Path = REPO_ROOT / "prompts"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return _split(self.cors_origins)
 
     @property
     def greenhouse_board_list(self) -> list[str]:

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security import require_admin
 from app.schemas.candidate import CandidateProfileIn, CandidateProfileOut
 from app.services import profile as profile_service
 
@@ -15,7 +16,7 @@ def read_profile(db: Session = Depends(get_db)) -> CandidateProfileOut:
     return CandidateProfileOut(profile=profile, updated_at=row.updated_at if row else None)
 
 
-@router.put("", response_model=CandidateProfileOut)
+@router.put("", response_model=CandidateProfileOut, dependencies=[Depends(require_admin)])
 def update_profile(
     payload: CandidateProfileIn, db: Session = Depends(get_db)
 ) -> CandidateProfileOut:

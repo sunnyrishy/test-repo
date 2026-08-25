@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import JobRow from '../components/JobRow'
 import { Link } from 'react-router-dom'
+import AdminKeyField from '../components/AdminKeyField'
 import { fetchJobs, fetchStats, runPipeline, setJobStatus } from '../services/api'
 import type { Job, Stats } from '../types/job'
 
@@ -88,6 +89,7 @@ export default function Dashboard() {
       <div className="flex items-baseline justify-between">
         <h1 className="text-lg font-semibold">Dashboard</h1>
         <span className="flex items-center gap-4">
+          <AdminKeyField />
           <Link to="/stats" className="text-sm text-slate-600 underline-offset-2 hover:underline">
             Statistics
           </Link>
