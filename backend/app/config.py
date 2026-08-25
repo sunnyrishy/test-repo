@@ -12,11 +12,32 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/job_agent"
 
+    # AI verification. "mock" is for development and tests only; it never
+    # fabricates a decision in production because it is not the default.
+    ai_provider: str = "mock"
+    ai_api_key: str = ""
+    ai_model: str = ""
+    ai_max_output_tokens: int = 1500
+    ai_max_attempts: int = 3
+    ai_concurrency: int = 4
+    verification_max_age_days: int = 7
+    verification_batch_size: int = 50
+
     # Pipeline thresholds
     job_discovery_interval_minutes: int = 180
     max_job_age_hours: int = 72
     min_match_score: int = 80
     notification_min_score: int = 90
+
+    # Notifications
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    notification_email: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    discord_webhook_url: str = ""
 
     # Source connectors
     greenhouse_boards: str = ""
@@ -28,6 +49,7 @@ class Settings(BaseSettings):
     source_concurrency: int = 4
 
     candidate_profile_path: Path = REPO_ROOT / "config" / "candidate_profile.yaml"
+    prompts_path: Path = REPO_ROOT / "prompts"
 
     @property
     def greenhouse_board_list(self) -> list[str]:

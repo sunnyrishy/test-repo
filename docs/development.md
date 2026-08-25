@@ -31,13 +31,17 @@ cd backend && pytest tests -q
 
 The suite covers date filtering, experience parsing, seniority filtering,
 location filtering, employment filtering, role classification, deduplication
-fingerprints and connector normalization. It needs no database and no network.
+and canonical merging, connector normalization, AI response validation,
+verification caching, scoring, notifications, and one end-to-end pipeline test
+that runs ingest → merge → verify → score → API. It needs no network and no
+PostgreSQL server (the JSON columns fall back to plain JSON on SQLite).
 
 ## Scripts
 
 ```bash
 python scripts/seed_profile.py    # load config/candidate_profile.yaml into the DB
-python scripts/run_discovery.py   # one discovery pass, with logging
+python scripts/run_discovery.py   # discovery only
+python scripts/run_pipeline.py    # discover → merge → verify → score
 ```
 
 ## Migrations
@@ -48,12 +52,30 @@ alembic revision --autogenerate -m "add scores"
 alembic upgrade head
 ```
 
-## Where the next phases go
+## Using a real model
 
-- **Phase 4** — extend `services/deduplication.py` to merge fingerprint matches
-  into a canonical `Job` (`canonical_job_id`) and attach every `JobSource`.
-- **Phase 5** — add `services/ai/{base,openai_provider,anthropic_provider}.py`
-  behind `AI_PROVIDER`/`AI_MODEL`, a `job_verifications` table, and Pydantic
-  validation of the model's JSON with retry-then-`verification_error`.
-- **Phase 6** — a `job_scores` table and the 0–100 weighting; scores must never
-  override a hard rejection.
+The default `AI_PROVIDER=mock` performs no reasoning: it reports only what a
+literal read of the text supports and leaves the semantic checks unknown, so
+every job it touches lands in `REVIEW` and none reach the dashboard. That is
+intentional — a development stand-in must not manufacture verdicts. For real
+results:
+
+```env
+AI_PROVIDER=anthropic     # or openai
+AI_API_KEY=...
+AI_MODEL=<model id>
+```
+
+Then `POST /api/admin/verification/run` (or let the worker do it). Adding a
+provider means one file in `app/services/ai/` implementing `AIProvider` and one
+entry in `PROVIDERS`; nothing else changes.
+
+## Extending it further
+
+- **More sources** — implement `JobSourceConnector` in `app/sources/` and
+  register it in `sources/registry.py`. See `docs/sources.md`.
+- **Resume matching** — the architecture leaves room: parse the resume into the
+  same skill vocabulary the profile uses, and add a resume-fit component to
+  `WEIGHTS`. Nothing in the pipeline needs to move.
+- **Semantic duplicate detection** — add an embedding step in
+  `services/deduplication.py` after the fingerprint pass.

@@ -3,6 +3,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.verification import VerificationOut
+
 
 class EmploymentType(StrEnum):
     FULL_TIME = "FullTime"
@@ -66,6 +68,22 @@ class JobSourceOut(BaseModel):
     application_url: str | None
 
 
+class ScoreOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    overall_score: float
+    classification: str
+    role_score: float
+    experience_score: float
+    skill_score: float
+    degree_score: float
+    graduation_score: float
+    work_auth_score: float
+    location_score: float
+    salary_score: float
+    company_score: float
+
+
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +107,8 @@ class JobOut(BaseModel):
     filter_rejection_reason: str | None
     status: str
     sources: list[JobSourceOut] = Field(default_factory=list)
+    score: ScoreOut | None = None
+    verification: VerificationOut | None = None
 
 
 class JobDetailOut(JobOut):

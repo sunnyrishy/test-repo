@@ -13,8 +13,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface JobQuery {
   search?: string
   status?: string
-  filter_status?: string
+  view?: string
+  min_score?: number
   workplace_type?: string
+  work_authorization?: string
+  sponsorship?: string
+  min_salary?: number
   posted_within_hours?: number
   sort?: string
   limit?: number
@@ -38,5 +42,5 @@ export const setJobStatus = (id: number, status: string) =>
     method: 'POST',
   })
 
-export const runDiscovery = () =>
-  request<Record<string, unknown>>('/api/admin/discovery/run', { method: 'POST' })
+export const runPipeline = () =>
+  request<Record<string, unknown>>('/api/admin/pipeline/run', { method: 'POST' })

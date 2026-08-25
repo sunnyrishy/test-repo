@@ -57,7 +57,7 @@ def ingest(db: Session, jobs: list[NormalizedJob], stats: RunStats, settings: Se
     """Persist normalized jobs and record their deterministic filter outcome."""
     profile = get_profile(db)
     now = datetime.now(UTC)
-    seen_fingerprints: set[str] = set()
+    seen: dict[str, Job] = {}
 
     for job in jobs:
         stats.discovered += 1
@@ -71,10 +71,22 @@ def ingest(db: Session, jobs: list[NormalizedJob], stats: RunStats, settings: Se
             continue
 
         digest = deduplication.fingerprint(job)
-        if digest in seen_fingerprints:
+        twin = seen.get(digest)
+        if twin is not None:
+            # Same vacancy, different source: keep the provenance rather than
+            # dropping the sighting, and let merging pick the canonical job.
+            twin.sources.append(
+                JobSource(
+                    source=job.source,
+                    source_job_id=job.external_id,
+                    source_url=job.source_url,
+                    application_url=job.application_url,
+                    first_seen_at=now,
+                    last_seen_at=now,
+                )
+            )
             stats.duplicates += 1
             continue
-        seen_fingerprints.add(digest)
 
         result = filtering.hard_filter(job, profile, settings.max_job_age_hours)
         if result.passed:
@@ -122,6 +134,7 @@ def ingest(db: Session, jobs: list[NormalizedJob], stats: RunStats, settings: Se
             )
         )
         db.add(row)
+        seen[digest] = row
         stats.stored += 1
 
     db.commit()

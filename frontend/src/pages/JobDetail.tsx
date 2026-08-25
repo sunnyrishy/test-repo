@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PostedAt from '../components/PostedAt'
+import ScoreBadge from '../components/ScoreBadge'
+import VerificationPanel from '../components/VerificationPanel'
 import { fetchJob } from '../services/api'
 import type { JobDetail as JobDetailType } from '../types/job'
 
@@ -26,7 +28,10 @@ export default function JobDetail() {
         ← Back to dashboard
       </Link>
 
-      <h1 className="mt-3 text-xl font-semibold">{job.title}</h1>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-semibold">{job.title}</h1>
+        <ScoreBadge score={job.score} />
+      </div>
       <p className="text-slate-700">{job.company}</p>
 
       <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
@@ -46,7 +51,7 @@ export default function JobDetail() {
           }
         />
         <Field
-          label="Deterministic filter"
+          label="Filter"
           value={
             job.filter_status === 'PASS'
               ? '✓ Passed'
@@ -54,6 +59,43 @@ export default function JobDetail() {
           }
         />
       </dl>
+
+      <section className="mt-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Verification
+        </h2>
+        <div className="mt-2">
+          <VerificationPanel verification={job.verification} />
+        </div>
+      </section>
+
+      {job.score && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Score breakdown
+          </h2>
+          <ul className="mt-2 grid gap-x-8 text-sm sm:grid-cols-2">
+            {[
+              ['Role relevance', job.score.role_score, 20],
+              ['Entry-level fit', job.score.experience_score, 20],
+              ['Technical skills', job.score.skill_score, 15],
+              ['Degree', job.score.degree_score, 10],
+              ['Graduation year', job.score.graduation_score, 10],
+              ['Work authorization', job.score.work_auth_score, 10],
+              ['Location', job.score.location_score, 5],
+              ['Salary', job.score.salary_score, 5],
+              ['Posting quality', job.score.company_score, 5],
+            ].map(([label, value, max]) => (
+              <li key={label as string} className="flex justify-between border-b border-slate-100 py-1">
+                <span className="text-slate-600">{label as string}</span>
+                <span className="tabular-nums">
+                  {(value as number).toFixed(1)} / {max as number}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Sources</h2>

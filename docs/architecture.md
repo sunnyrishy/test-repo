@@ -5,11 +5,12 @@ reasoning is genuinely required. It is not one autonomous agent.
 
 ```
 SOURCE CONNECTORS → NORMALIZATION → DEDUPLICATION → DETERMINISTIC FILTERS
-      → [AI VERIFICATION → SCORING]  → DATABASE → DASHBOARD → HUMAN APPLIES
+      → AI VERIFICATION → SCORING → DATABASE → DASHBOARD → HUMAN APPLIES
 ```
 
-The bracketed stages are Phase 5–6 and are not implemented yet. Everything
-before them is.
+`services/pipeline.py` runs the stages in that order. Each stage commits before
+the next begins, so a later failure never discards earlier work, and a stage
+that raises is recorded in the run result instead of aborting the pipeline.
 
 ## Stage responsibilities
 
@@ -19,8 +20,9 @@ before them is.
 | Normalization | `app/services/normalization.py` | one internal schema |
 | Deduplication | `app/services/deduplication.py` | one canonical job |
 | Deterministic filters | `app/services/filtering.py` | cheap precision |
-| AI verification | *(Phase 5)* | precision |
-| Scoring / ranking | *(Phase 6)* | ordering |
+| AI verification | `app/services/verification.py`, `app/services/ai/*` | precision |
+| Scoring / ranking | `app/services/scoring.py` | ordering |
+| Notifications | `app/services/notification.py` | one digest, no repeats |
 
 ## Dates
 
@@ -31,7 +33,7 @@ Four timestamps are tracked separately and never conflated:
 - `source_updated_at` — when the source last changed the posting.
 - `first_seen_at` — when this system first ingested it. **Never** used as the
   posting date.
-- `last_verified_at` — when AI verification last ran (Phase 5).
+- `last_verified_at` — when AI verification last ran.
 
 `freshness_status` is derived: `FRESH` within `MAX_JOB_AGE_HOURS`, `STALE`
 beyond it, and `UNKNOWN` when there is no employer date. An unknown date is
@@ -79,3 +81,71 @@ The profile lives in `config/candidate_profile.yaml` and, once the app runs, in
 the `candidate_profile` table (editable via `PUT /api/profile`). No candidate
 detail is written into business logic — every filter takes the profile as an
 argument.
+
+## Deduplication
+
+Matching runs in priority order: exact `source` + `external_id` (in the
+ingestion path), then the `company + title + location` fingerprint. When one
+vacancy is seen twice in a single run, the second sighting is recorded as an
+extra `job_sources` row rather than dropped, so no provenance is lost.
+
+`merge_duplicates()` folds each fingerprint group into one canonical job. The
+employer's own ATS wins over an aggregator (`CANONICAL_SOURCE_PRIORITY`), so
+the Apply button points at the employer's application URL. Duplicates are not
+deleted — they are deactivated and given a `canonical_job_id`, so an old link
+still resolves and a later run recognizes them. The canonical job inherits a
+posting date, description or salary the winner lacked, but nothing that neither
+posting stated.
+
+Semantic-similarity matching is deliberately not implemented: it needs
+embeddings, and the cheaper keys resolve the duplicates these sources actually
+produce.
+
+## AI verification
+
+Only jobs that survived the deterministic filters are sent, and only when
+something changed: `needs_verification()` re-runs a job when its description
+changed, the candidate profile changed, the previous attempt errored, or the
+verification is older than `VERIFICATION_MAX_AGE_DAYS`. Everything else reuses
+the stored verdict, which is what keeps model spend proportional to new work.
+
+The provider is chosen by `AI_PROVIDER` / `AI_MODEL` (`openai`, `anthropic`, or
+the development-only `mock`); business logic never imports a vendor SDK.
+
+Model output is never trusted:
+
+1. The response is parsed out of any prose or code fence.
+2. It is validated against `VerificationResult`, which forbids unknown fields
+   and range-checks every number.
+3. **The decision must follow from the checks.** A response that reports a
+   failed hard requirement but says `PASS` is corrected to `FAIL`, and one with
+   an undetermined check becomes `REVIEW`. The checks are the evidence; the
+   decision field is not taken on trust.
+4. Invalid output is retried up to `AI_MAX_ATTEMPTS`, then stored as
+   `decision=ERROR` with the reason — never as a guess, and never as malformed
+   data in the jobs tables.
+
+A `null` check means "could not be determined", which is why unknowns produce
+`REVIEW` rather than a pass. The mock provider reasons about nothing and
+reports everything as unknown, so it can never wave a job through.
+
+## Scoring
+
+`score_job()` returns `None` for anything that is not a verified `PASS`, so a
+score can only ever order jobs that are already eligible — a role requiring 30
+years cannot be rescued by a strong title match. Weights total 100 and are
+listed in `WEIGHTS`.
+
+Two deliberate choices: an unknown work authorization or sponsorship scores at
+the midpoint rather than zero (absence of information is not evidence of a
+problem), and a missing salary scores above a low salary rather than below it.
+There is no company-reputation signal because we have no reputation data, and
+inventing one would be fabricating information; posting completeness stands in
+for it.
+
+## Notifications
+
+Digests only, above `NOTIFICATION_MIN_SCORE`, one message per channel per run.
+The `notifications` table records job + channel, so a job is never sent twice.
+A channel that fails is logged and leaves its jobs unmarked, so the next run
+retries them.
