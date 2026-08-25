@@ -43,7 +43,7 @@ services:
       - ./config:/config:ro
     environment:
       CANDIDATE_PROFILE_PATH: /config/candidate_profile.yaml
-    command: python -m app.workers.discovery_worker
+    command: python -m app.workers.discovery_worker  # runs the whole pipeline
 
   frontend:
     build: ./frontend

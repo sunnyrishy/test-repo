@@ -83,6 +83,12 @@ class Job(Base):
     sources: Mapped[list["JobSource"]] = relationship(
         back_populates="job", cascade="all, delete-orphan"
     )
+    verification: Mapped["JobVerification | None"] = relationship(
+        "JobVerification", cascade="all, delete-orphan", uselist=False
+    )
+    score: Mapped["JobScore | None"] = relationship(
+        "JobScore", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class JobSource(Base):

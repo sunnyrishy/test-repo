@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import JobRow from '../components/JobRow'
-import { fetchJobs, fetchStats, runDiscovery, setJobStatus } from '../services/api'
+import { Link } from 'react-router-dom'
+import { fetchJobs, fetchStats, runPipeline, setJobStatus } from '../services/api'
 import type { Job, Stats } from '../types/job'
 
 const PAGE_SIZE = 25
@@ -23,7 +24,12 @@ export default function Dashboard() {
   const [tab, setTab] = useState('')
   const [postedWithin, setPostedWithin] = useState('')
   const [workplace, setWorkplace] = useState('')
-  const [sort, setSort] = useState('newest')
+  const [minScore, setMinScore] = useState('')
+  const [workAuth, setWorkAuth] = useState('')
+  const [sponsorship, setSponsorship] = useState('')
+  const [minSalary, setMinSalary] = useState('')
+  const [view, setView] = useState('verified')
+  const [sort, setSort] = useState('score')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,7 +39,12 @@ export default function Dashboard() {
       const page = await fetchJobs({
         search: search || undefined,
         status: tab || undefined,
+        view,
+        min_score: minScore ? Number(minScore) : undefined,
         workplace_type: workplace || undefined,
+        work_authorization: workAuth || undefined,
+        sponsorship: sponsorship || undefined,
+        min_salary: minSalary ? Number(minSalary) : undefined,
         posted_within_hours: postedWithin ? Number(postedWithin) : undefined,
         sort,
         limit: PAGE_SIZE,
@@ -44,7 +55,7 @@ export default function Dashboard() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load jobs')
     }
-  }, [search, tab, workplace, postedWithin, sort, offset])
+  }, [search, tab, view, minScore, workplace, workAuth, sponsorship, minSalary, postedWithin, sort, offset])
 
   useEffect(() => {
     void load()
@@ -63,10 +74,10 @@ export default function Dashboard() {
     setBusy(true)
     setError(null)
     try {
-      await runDiscovery()
+      await runPipeline()
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Discovery run failed')
+      setError(err instanceof Error ? err.message : 'Pipeline run failed')
     } finally {
       setBusy(false)
     }
@@ -76,21 +87,26 @@ export default function Dashboard() {
     <div>
       <div className="flex items-baseline justify-between">
         <h1 className="text-lg font-semibold">Dashboard</h1>
-        <button
+        <span className="flex items-center gap-4">
+          <Link to="/stats" className="text-sm text-slate-600 underline-offset-2 hover:underline">
+            Statistics
+          </Link>
+          <button
           type="button"
           onClick={onRefresh}
           disabled={busy}
-          className="border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-        >
-          {busy ? 'Running…' : 'Run discovery'}
-        </button>
+            className="border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            {busy ? 'Running…' : 'Run pipeline'}
+          </button>
+        </span>
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-px border border-slate-200 bg-slate-200 sm:grid-cols-4">
         <Metric label="Discovered today" value={stats?.discovered_today} />
-        <Metric label="This week" value={stats?.discovered_this_week} />
-        <Metric label="Passed filters" value={stats?.passed_filters} />
-        <Metric label="Hard rejected" value={stats?.rejected} />
+        <Metric label="Verified" value={stats?.verified_pass} />
+        <Metric label="Excellent matches" value={stats?.excellent_matches} />
+        <Metric label="Needs review" value={stats?.verified_review} />
       </dl>
 
       <nav className="mt-6 flex gap-4 border-b border-slate-200 text-sm">
@@ -125,6 +141,31 @@ export default function Dashboard() {
           className="min-w-56 flex-1 border border-slate-300 px-2 py-1.5"
         />
         <select
+          value={view}
+          onChange={(event) => {
+            setView(event.target.value)
+            setOffset(0)
+          }}
+          aria-label="Verification view"
+          className="border border-slate-300 px-2 py-1.5"
+        >
+          <option value="verified">Verified only</option>
+          <option value="review">Needs review</option>
+          <option value="filtered">Passed filters</option>
+          <option value="all">Everything</option>
+        </select>
+        <select
+          value={minScore}
+          onChange={(event) => setMinScore(event.target.value)}
+          aria-label="Minimum score"
+          className="border border-slate-300 px-2 py-1.5"
+        >
+          <option value="">Any score</option>
+          <option value="95">95+</option>
+          <option value="90">90+</option>
+          <option value="80">80+</option>
+        </select>
+        <select
           value={postedWithin}
           onChange={(event) => setPostedWithin(event.target.value)}
           aria-label="Posted within"
@@ -147,11 +188,47 @@ export default function Dashboard() {
           <option value="Onsite">On-site</option>
         </select>
         <select
+          value={workAuth}
+          onChange={(event) => setWorkAuth(event.target.value)}
+          aria-label="Work authorization"
+          className="border border-slate-300 px-2 py-1.5"
+        >
+          <option value="">Any work authorization</option>
+          <option value="CLEARLY_COMPATIBLE">Compatible</option>
+          <option value="PROBABLY_COMPATIBLE">Probably compatible</option>
+          <option value="UNKNOWN">Unknown</option>
+          <option value="CLEARLY_INCOMPATIBLE">Incompatible</option>
+        </select>
+        <select
+          value={sponsorship}
+          onChange={(event) => setSponsorship(event.target.value)}
+          aria-label="Sponsorship"
+          className="border border-slate-300 px-2 py-1.5"
+        >
+          <option value="">Any sponsorship</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="POSSIBLY_AVAILABLE">Possibly available</option>
+          <option value="NOT_SPECIFIED">Not specified</option>
+          <option value="NOT_AVAILABLE">Not available</option>
+        </select>
+        <select
+          value={minSalary}
+          onChange={(event) => setMinSalary(event.target.value)}
+          aria-label="Minimum salary"
+          className="border border-slate-300 px-2 py-1.5"
+        >
+          <option value="">Any salary</option>
+          <option value="80000">$80K+</option>
+          <option value="100000">$100K+</option>
+          <option value="120000">$120K+</option>
+        </select>
+        <select
           value={sort}
           onChange={(event) => setSort(event.target.value)}
           aria-label="Sort order"
           className="border border-slate-300 px-2 py-1.5"
         >
+          <option value="score">Highest match</option>
           <option value="newest">Newest</option>
           <option value="company">Company</option>
           <option value="salary">Salary</option>
@@ -167,6 +244,7 @@ export default function Dashboard() {
       <table className="mt-4 w-full text-sm">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+            <th className="pb-2 font-medium">Score</th>
             <th className="pb-2 font-medium">Role</th>
             <th className="pb-2 font-medium">Company</th>
             <th className="pb-2 font-medium">Posted</th>
@@ -183,7 +261,7 @@ export default function Dashboard() {
 
       {jobs.length === 0 && !error && (
         <p className="mt-6 text-sm text-slate-500">
-          No jobs match these filters. Configure a source board and run discovery.
+          No jobs match these filters. Configure a source board and run the pipeline.
         </p>
       )}
 

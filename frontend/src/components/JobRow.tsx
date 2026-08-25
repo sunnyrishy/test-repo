@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { Job } from '../types/job'
 import PostedAt from './PostedAt'
+import ScoreBadge from './ScoreBadge'
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: 'New',
@@ -20,6 +21,9 @@ export default function JobRow({
 }) {
   return (
     <tr className="border-t border-slate-200 align-top hover:bg-slate-50">
+      <td className="py-3 pr-3 whitespace-nowrap">
+        <ScoreBadge score={job.score} />
+      </td>
       <td className="py-3 pr-4">
         <Link to={`/job/${job.id}`} className="font-medium text-slate-900 hover:underline">
           {job.title}
