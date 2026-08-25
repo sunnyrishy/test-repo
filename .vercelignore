@@ -1,0 +1,9 @@
+# Keep the function bundle small. Migrations run from a workstation or CI
+# against the managed database, not from inside a serverless function.
+frontend/
+backend/tests/
+backend/migrations/
+backend/.venv/
+docs/
+scripts/
+index.html

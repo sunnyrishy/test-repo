@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.config import Settings, get_settings
 from app.database import get_db
+from app.security import require_admin
 from app.services.deduplication import merge_duplicates
 from app.services.discovery import run_discovery
 from app.services.notification import send_digests
@@ -9,7 +11,22 @@ from app.services.pipeline import run_pipeline
 from app.services.scoring import run_scoring
 from app.services.verification import run_verification
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+# Every admin route is guarded; on a hosted deployment these trigger real work
+# and real model spend.
+router = APIRouter(
+    prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)]
+)
+
+
+@router.get("/cron")
+async def cron(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> dict:
+    """Scheduled entry point for hosted deployments (Vercel Cron sends GET).
+
+    Serverless invocations are time-limited, so one call does discovery plus a
+    bounded verification batch (VERIFICATION_BATCH_SIZE) rather than draining
+    the queue; the next scheduled run picks up whatever is left.
+    """
+    return await run_pipeline(db, settings)
 
 
 @router.post("/pipeline/run")
